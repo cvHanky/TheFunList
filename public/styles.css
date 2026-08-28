@@ -149,7 +149,6 @@ body {
   font-size: 1.05rem;
   margin-right: auto;
 }
-.brand-icon { font-size: 1.3rem; }
 
 .tabs {
   display: flex;
@@ -215,21 +214,21 @@ body {
   color: #fff;
 }
 
-.icon-btn {
+.link-btn {
   border: none;
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border);
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
+  background: none;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.15s ease;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  align-self: flex-start;
+  margin-top: -6px;
 }
-.icon-btn:hover { transform: scale(1.06); }
+.link-btn:hover { color: var(--accent-2); }
 
 /* ============ Views ============ */
 .view.hidden { display: none; }
@@ -341,7 +340,6 @@ body {
   color: var(--text-1);
   grid-column: 1 / -1;
 }
-.empty-state .big { font-size: 2.4rem; margin-bottom: 8px; }
 
 /* ============ Stats bar ============ */
 .stats-bar {
@@ -407,6 +405,18 @@ input:focus, select:focus, textarea:focus {
 select { cursor: pointer; }
 textarea { resize: vertical; width: 100%; }
 
+/* Native <option> popups are rendered by the OS/browser, largely ignoring the
+   surrounding page's CSS custom properties — Chromium on Windows in particular
+   tends to keep the option list's own light background while still inheriting
+   our (theme-dependent) text color, which in dark mode means light text on a
+   light popup: invisible until a hover highlight provides contrast. Setting
+   color and background explicitly on <option> forces both sides of that
+   contrast pair so the list reads correctly in both themes. */
+select option {
+  color: #211f3d;
+  background: #ffffff;
+}
+
 /* ============ Item list ============ */
 .item-list {
   display: flex;
@@ -436,10 +446,13 @@ textarea { resize: vertical; width: 100%; }
 
 .drag-handle {
   color: var(--text-2);
-  font-size: 1.1rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   cursor: grab;
   user-select: none;
-  padding: 0 2px;
+  white-space: nowrap;
 }
 
 .item-rank {
@@ -507,24 +520,23 @@ textarea { resize: vertical; width: 100%; }
   display: flex;
   gap: 6px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .item-actions button {
   border: none;
   background: rgba(255, 255, 255, 0.10);
   color: var(--text-1);
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
+  padding: 6px 12px;
+  border-radius: 999px;
   cursor: pointer;
-  font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
   transition: background 0.15s, color 0.15s, transform 0.15s;
 }
 .item-actions button:hover {
   background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.06);
+  transform: scale(1.03);
 }
 .item-actions .btn-check.checked {
   background: linear-gradient(135deg, var(--accent-3), #3fbfa0);
@@ -550,8 +562,6 @@ textarea { resize: vertical; width: 100%; }
   padding: 8px 4px;
   margin-bottom: 10px;
 }
-#purchased-caret { transition: transform 0.2s ease; display: inline-block; }
-#purchased-caret.open { transform: rotate(90deg); }
 .pill {
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border);
@@ -618,6 +628,78 @@ textarea { resize: vertical; width: 100%; }
 }
 
 .confirm-text { color: var(--text-1); margin: 0 0 4px; }
+
+/* ============ Manage Categories ============ */
+.category-add-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.category-add-form input { flex: 1; }
+
+.categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+.category-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+}
+[data-theme="light"] .category-row { background: rgba(255, 255, 255, 0.5); }
+
+.category-row .category-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.category-row input.category-rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+}
+.category-row .category-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.category-row .category-actions button {
+  border: none;
+  background: rgba(255, 255, 255, 0.10);
+  color: var(--text-1);
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.category-row .category-actions button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.category-row .category-actions .btn-delete:hover {
+  background: var(--danger);
+  color: #fff;
+}
+.categories-empty {
+  color: var(--text-2);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 18px 0;
+}
 
 /* ============ Toast ============ */
 .toast {

@@ -6,9 +6,11 @@
 
   // ---------- State ----------
   let allItems = [];
+  let allCategories = [];
   let currentView = 'home';
   let dragSourceId = null;
-  let pendingDeleteId = null;
+  let pendingDelete = null; // { type: 'item' | 'category', id, name }
+  let renamingCategoryId = null;
 
   // ---------- DOM ----------
   const $ = (sel) => document.querySelector(sel);
@@ -20,11 +22,10 @@
   const activeListEl = $('#active-list');
   const purchasedListEl = $('#purchased-list');
   const purchasedToggle = $('#purchased-toggle');
-  const purchasedCaret = $('#purchased-caret');
+  const purchasedToggleLabel = $('#purchased-toggle-label');
   const purchasedCount = $('#purchased-count');
   const searchInput = $('#search-input');
   const categoryFilter = $('#category-filter');
-  const categorySuggestions = $('#category-suggestions');
 
   const modalOverlay = $('#modal-overlay');
   const modalTitle = $('#modal-title');
@@ -35,8 +36,18 @@
   const fieldCategory = $('#field-category');
   const fieldNotes = $('#field-notes');
   const formError = $('#form-error');
+  const modalManageCategoriesBtn = $('#modal-manage-categories-btn');
+
+  const categoriesOverlay = $('#categories-overlay');
+  const categoriesList = $('#categories-list');
+  const categoryAddForm = $('#category-add-form');
+  const newCategoryName = $('#new-category-name');
+  const categoryFormError = $('#category-form-error');
+  const manageCategoriesBtn = $('#manage-categories-btn');
+  const categoriesClose = $('#categories-close');
 
   const confirmOverlay = $('#confirm-overlay');
+  const confirmTitle = $('#confirm-title');
   const confirmText = $('#confirm-text');
 
   const toastEl = $('#toast');
@@ -62,6 +73,10 @@
 
   async function loadItems() {
     allItems = await api('/api/items');
+  }
+
+  async function loadCategories() {
+    allCategories = await api('/api/categories');
   }
 
   // ---------- Toast ----------
@@ -92,10 +107,10 @@
   function applyTheme(theme) {
     if (theme === 'light') {
       document.documentElement.setAttribute('data-theme', 'light');
-      themeToggle.textContent = '☀️';
+      themeToggle.textContent = 'Switch to dark mode';
     } else {
       document.documentElement.removeAttribute('data-theme');
-      themeToggle.textContent = '🌙';
+      themeToggle.textContent = 'Switch to light mode';
     }
   }
   function initTheme() {
@@ -123,8 +138,7 @@
     if (allItems.length === 0) {
       top3Grid.innerHTML = `
         <div class="empty-state">
-          <div class="big">🎯</div>
-          <p>Your Fun List is empty. Add something you've been wanting!</p>
+          <p>Your Fun List is empty. Add something you've been wanting.</p>
         </div>`;
     } else {
       for (let i = 0; i < 3; i++) {
@@ -135,7 +149,7 @@
           card.className = `top3-card glass rank-${rankNum}`;
           card.innerHTML = `
             <div class="rank-badge">#${rankNum}</div>
-            ${item.category ? `<span class="item-category">${escapeHtml(item.category)}</span>` : '<span></span>'}
+            ${item.categoryName ? `<span class="item-category">${escapeHtml(item.categoryName)}</span>` : '<span></span>'}
             <div class="item-name">${escapeHtml(item.name)}</div>
             <div class="item-price">${fmtPrice(item.price)}</div>
             ${item.notes ? `<div class="item-notes">${escapeHtml(item.notes)}</div>` : ''}
@@ -144,7 +158,7 @@
         } else {
           const empty = document.createElement('div');
           empty.className = `top3-empty rank-${rankNum}`;
-          empty.textContent = `Slot #${rankNum} is open — add another item!`;
+          empty.textContent = `Slot #${rankNum} is open — add another item.`;
           top3Grid.appendChild(empty);
         }
       }
@@ -176,21 +190,25 @@
 
   // ---------- Rendering: List ----------
   function populateCategoryFilter() {
-    const cats = Array.from(new Set(allItems.map((i) => i.category).filter(Boolean))).sort();
     const currentVal = categoryFilter.value;
     categoryFilter.innerHTML = '<option value="">All categories</option>' +
-      cats.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
-    if (cats.includes(currentVal)) categoryFilter.value = currentVal;
+      allCategories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    if (allCategories.some((c) => String(c.id) === currentVal)) categoryFilter.value = currentVal;
+  }
 
-    categorySuggestions.innerHTML = cats.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('');
+  function populateCategorySelect() {
+    const currentVal = fieldCategory.value;
+    fieldCategory.innerHTML = '<option value="">No category</option>' +
+      allCategories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    if (allCategories.some((c) => String(c.id) === currentVal)) fieldCategory.value = currentVal;
   }
 
   function matchesFilters(item) {
     const q = searchInput.value.trim().toLowerCase();
-    const cat = categoryFilter.value;
-    if (cat && item.category !== cat) return false;
+    const catId = categoryFilter.value;
+    if (catId && String(item.categoryId || '') !== catId) return false;
     if (q) {
-      const hay = `${item.name} ${item.notes || ''} ${item.category || ''}`.toLowerCase();
+      const hay = `${item.name} ${item.notes || ''} ${item.categoryName || ''}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -209,7 +227,7 @@
 
     activeListEl.innerHTML = '';
     if (active.length === 0) {
-      activeListEl.innerHTML = `<div class="empty-state"><div class="big">🗒️</div><p>Nothing here yet. Click "+ Add Item" to start your list.</p></div>`;
+      activeListEl.innerHTML = `<div class="empty-state"><p>Nothing here yet. Use "Add Item" to start your list.</p></div>`;
     } else {
       active.forEach((item, idx) => activeListEl.appendChild(buildRow(item, idx + 1, true)));
     }
@@ -226,26 +244,26 @@
     row.draggable = draggable;
 
     row.innerHTML = `
-      ${draggable ? '<span class="drag-handle" title="Drag to reorder">⠿</span>' : '<span class="drag-handle" style="visibility:hidden">⠿</span>'}
-      ${rankNum !== null ? `<span class="item-rank">#${rankNum}</span>` : '<span class="item-rank">✓</span>'}
+      ${draggable ? '<span class="drag-handle" title="Drag to reorder">Drag</span>' : '<span class="drag-handle" style="visibility:hidden">Drag</span>'}
+      ${rankNum !== null ? `<span class="item-rank">#${rankNum}</span>` : '<span class="item-rank"></span>'}
       <div class="item-main">
         <div class="item-title-row">
           <span class="item-name${item.purchased ? ' strike' : ''}">${escapeHtml(item.name)}</span>
-          ${item.category ? `<span class="item-category">${escapeHtml(item.category)}</span>` : ''}
+          ${item.categoryName ? `<span class="item-category">${escapeHtml(item.categoryName)}</span>` : ''}
         </div>
         ${item.notes ? `<span class="item-notes-line">${escapeHtml(item.notes)}</span>` : ''}
       </div>
       <span class="item-price">${fmtPrice(item.price)}</span>
       <div class="item-actions">
-        <button class="btn-check${item.purchased ? ' checked' : ''}" title="${item.purchased ? 'Move back to active list' : 'Mark as purchased'}">${item.purchased ? '↺' : '✓'}</button>
-        <button class="btn-edit" title="Edit">✎</button>
-        <button class="btn-delete" title="Delete">🗑</button>
+        <button class="btn-check${item.purchased ? ' checked' : ''}">${item.purchased ? 'Restore' : 'Mark Purchased'}</button>
+        <button class="btn-edit">Edit</button>
+        <button class="btn-delete">Delete</button>
       </div>
     `;
 
     row.querySelector('.btn-check').addEventListener('click', () => togglePurchased(item));
     row.querySelector('.btn-edit').addEventListener('click', () => openModal(item));
-    row.querySelector('.btn-delete').addEventListener('click', () => openConfirm(item));
+    row.querySelector('.btn-delete').addEventListener('click', () => openConfirm({ type: 'item', id: item.id, name: item.name }));
 
     if (draggable) {
       row.addEventListener('dragstart', () => {
@@ -304,7 +322,7 @@
   // ---------- Purchased toggle section ----------
   purchasedToggle.addEventListener('click', () => {
     const isHidden = purchasedListEl.classList.toggle('hidden');
-    purchasedCaret.classList.toggle('open', !isHidden);
+    purchasedToggleLabel.textContent = isHidden ? 'Show Purchased / Acquired' : 'Hide Purchased / Acquired';
   });
 
   async function togglePurchased(item) {
@@ -313,7 +331,7 @@
         method: 'PATCH',
         body: JSON.stringify({ purchased: !item.purchased }),
       });
-      toast(item.purchased ? `Moved "${item.name}" back to your active list` : `Nice! "${item.name}" marked as purchased 🎉`);
+      toast(item.purchased ? `Moved "${item.name}" back to your active list` : `Marked "${item.name}" as purchased`);
       await refresh();
     } catch (err) {
       toast('Error: ' + err.message);
@@ -324,19 +342,20 @@
   searchInput.addEventListener('input', renderList);
   categoryFilter.addEventListener('change', renderList);
 
-  // ---------- Add / Edit modal ----------
+  // ---------- Add / Edit item modal ----------
   const addItemBtn = $('#add-item-btn');
   const modalCancel = $('#modal-cancel');
 
   function openModal(item) {
     formError.classList.add('hidden');
     itemForm.reset();
+    populateCategorySelect();
     if (item) {
       modalTitle.textContent = 'Edit Item';
       fieldId.value = item.id;
       fieldName.value = item.name;
       fieldPrice.value = item.price ?? '';
-      fieldCategory.value = item.category ?? '';
+      fieldCategory.value = item.categoryId ?? '';
       fieldNotes.value = item.notes ?? '';
     } else {
       modalTitle.textContent = 'Add Item';
@@ -355,6 +374,7 @@
   modalOverlay.addEventListener('click', (e) => {
     if (e.target === modalOverlay) closeModal();
   });
+  modalManageCategoriesBtn.addEventListener('click', () => openCategoriesModal());
 
   itemForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -363,7 +383,7 @@
     const payload = {
       name: fieldName.value.trim(),
       price: fieldPrice.value === '' ? null : Number(fieldPrice.value),
-      category: fieldCategory.value.trim() || null,
+      categoryId: fieldCategory.value === '' ? null : Number(fieldCategory.value),
       notes: fieldNotes.value.trim() || null,
     };
     if (!payload.name) {
@@ -389,30 +409,169 @@
     }
   });
 
-  // ---------- Delete confirm ----------
+  // ---------- Manage Categories modal ----------
+  function openCategoriesModal() {
+    categoryFormError.classList.add('hidden');
+    categoryAddForm.reset();
+    renamingCategoryId = null;
+    renderCategoriesList();
+    categoriesOverlay.classList.remove('hidden');
+    setTimeout(() => newCategoryName.focus(), 50);
+  }
+
+  function closeCategoriesModal() {
+    categoriesOverlay.classList.add('hidden');
+    renamingCategoryId = null;
+  }
+
+  manageCategoriesBtn.addEventListener('click', () => openCategoriesModal());
+  categoriesClose.addEventListener('click', closeCategoriesModal);
+  categoriesOverlay.addEventListener('click', (e) => {
+    if (e.target === categoriesOverlay) closeCategoriesModal();
+  });
+
+  function renderCategoriesList() {
+    categoriesList.innerHTML = '';
+    if (allCategories.length === 0) {
+      categoriesList.innerHTML = '<div class="categories-empty">No categories yet. Add one above.</div>';
+      return;
+    }
+    allCategories.forEach((cat) => {
+      const row = document.createElement('div');
+      row.className = 'category-row';
+
+      if (renamingCategoryId === cat.id) {
+        row.innerHTML = `
+          <input type="text" class="category-rename-input" value="${escapeHtml(cat.name)}" maxlength="60" />
+          <div class="category-actions">
+            <button class="btn-save">Save</button>
+            <button class="btn-cancel">Cancel</button>
+          </div>
+        `;
+        const input = row.querySelector('.category-rename-input');
+        row.querySelector('.btn-save').addEventListener('click', () => renameCategory(cat, input.value));
+        row.querySelector('.btn-cancel').addEventListener('click', () => {
+          renamingCategoryId = null;
+          renderCategoriesList();
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); renameCategory(cat, input.value); }
+          if (e.key === 'Escape') { renamingCategoryId = null; renderCategoriesList(); }
+        });
+      } else {
+        row.innerHTML = `
+          <span class="category-name">${escapeHtml(cat.name)}</span>
+          <span class="pill">${cat.itemCount} item${cat.itemCount === 1 ? '' : 's'}</span>
+          <div class="category-actions">
+            <button class="btn-rename">Rename</button>
+            <button class="btn-delete">Delete</button>
+          </div>
+        `;
+        row.querySelector('.btn-rename').addEventListener('click', () => {
+          renamingCategoryId = cat.id;
+          renderCategoriesList();
+        });
+        row.querySelector('.btn-delete').addEventListener('click', () => {
+          openConfirm({
+            type: 'category',
+            id: cat.id,
+            name: cat.name,
+            note: cat.itemCount > 0
+              ? ` ${cat.itemCount} item${cat.itemCount === 1 ? '' : 's'} using it will become uncategorized.`
+              : '',
+          });
+        });
+      }
+
+      categoriesList.appendChild(row);
+    });
+  }
+
+  categoryAddForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    categoryFormError.classList.add('hidden');
+    const name = newCategoryName.value.trim();
+    if (!name) {
+      categoryFormError.textContent = 'Category name is required.';
+      categoryFormError.classList.remove('hidden');
+      return;
+    }
+    try {
+      await api('/api/categories', { method: 'POST', body: JSON.stringify({ name }) });
+      categoryAddForm.reset();
+      await loadCategories();
+      renderCategoriesList();
+      populateCategorySelect();
+      if (currentView === 'list') populateCategoryFilter();
+      toast(`Added category "${name}"`);
+    } catch (err) {
+      categoryFormError.textContent = err.message;
+      categoryFormError.classList.remove('hidden');
+    }
+  });
+
+  async function renameCategory(cat, newName) {
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      categoryFormError.textContent = 'Category name is required.';
+      categoryFormError.classList.remove('hidden');
+      return;
+    }
+    try {
+      await api(`/api/categories/${cat.id}`, { method: 'PUT', body: JSON.stringify({ name: trimmed }) });
+      renamingCategoryId = null;
+      await loadCategories();
+      renderCategoriesList();
+      populateCategorySelect();
+      await refresh();
+      toast(`Renamed category to "${trimmed}"`);
+    } catch (err) {
+      categoryFormError.textContent = err.message;
+      categoryFormError.classList.remove('hidden');
+    }
+  }
+
+  // ---------- Delete confirm (items and categories) ----------
   const confirmCancel = $('#confirm-cancel');
   const confirmDelete = $('#confirm-delete');
 
-  function openConfirm(item) {
-    pendingDeleteId = item.id;
-    confirmText.textContent = `"${item.name}" will be permanently removed from your list.`;
+  function openConfirm(target) {
+    pendingDelete = target;
+    if (target.type === 'category') {
+      confirmTitle.textContent = 'Delete this category?';
+      confirmText.textContent = `"${target.name}" will be permanently removed.${target.note || ''}`;
+    } else {
+      confirmTitle.textContent = 'Delete this item?';
+      confirmText.textContent = `"${target.name}" will be permanently removed from your list.`;
+    }
     confirmOverlay.classList.remove('hidden');
   }
   function closeConfirm() {
     confirmOverlay.classList.add('hidden');
-    pendingDeleteId = null;
+    pendingDelete = null;
   }
   confirmCancel.addEventListener('click', closeConfirm);
   confirmOverlay.addEventListener('click', (e) => {
     if (e.target === confirmOverlay) closeConfirm();
   });
   confirmDelete.addEventListener('click', async () => {
-    if (pendingDeleteId === null) return;
+    if (!pendingDelete) return;
+    const { type, id, name } = pendingDelete;
     try {
-      await api(`/api/items/${pendingDeleteId}`, { method: 'DELETE' });
-      toast('Item deleted');
-      closeConfirm();
-      await refresh();
+      if (type === 'category') {
+        await api(`/api/categories/${id}`, { method: 'DELETE' });
+        toast(`Deleted category "${name}"`);
+        closeConfirm();
+        await loadCategories();
+        renderCategoriesList();
+        populateCategorySelect();
+        await refresh();
+      } else {
+        await api(`/api/items/${id}`, { method: 'DELETE' });
+        toast('Item deleted');
+        closeConfirm();
+        await refresh();
+      }
     } catch (err) {
       toast('Error: ' + err.message);
       closeConfirm();
@@ -423,6 +582,7 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (!modalOverlay.classList.contains('hidden')) closeModal();
+      if (!categoriesOverlay.classList.contains('hidden')) closeCategoriesModal();
       if (!confirmOverlay.classList.contains('hidden')) closeConfirm();
     }
   });
@@ -446,5 +606,7 @@
 
   // ---------- Init ----------
   initTheme();
-  refresh().catch((err) => toast('Failed to load: ' + err.message));
+  Promise.all([loadCategories(), loadItems()])
+    .then(render)
+    .catch((err) => toast('Failed to load: ' + err.message));
 })();

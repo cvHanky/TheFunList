@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>The Fun List</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>" />
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -17,7 +16,6 @@
   <div class="app">
     <header class="topbar glass">
       <div class="brand">
-        <span class="brand-icon">✨</span>
         <span class="brand-name">The Fun List</span>
       </div>
       <nav class="tabs" role="tablist" aria-label="Views">
@@ -25,8 +23,8 @@
         <button class="tab" data-view="list" role="tab" aria-selected="false">My List</button>
       </nav>
       <div class="topbar-actions">
-        <button class="icon-btn" id="theme-toggle" title="Toggle light / dark" aria-label="Toggle theme">🌙</button>
-        <button class="btn btn-primary" id="add-item-btn">+ Add Item</button>
+        <button class="btn btn-ghost" id="theme-toggle" aria-label="Toggle color theme"></button>
+        <button class="btn btn-primary" id="add-item-btn">Add Item</button>
       </div>
     </header>
 
@@ -55,13 +53,14 @@
           <select id="category-filter">
             <option value="">All categories</option>
           </select>
+          <button type="button" class="btn btn-ghost" id="manage-categories-btn">Manage Categories</button>
         </div>
 
         <div id="active-list" class="item-list"></div>
 
         <div class="purchased-section">
           <button id="purchased-toggle" class="purchased-toggle-btn">
-            <span id="purchased-caret">▸</span> Purchased / Acquired <span id="purchased-count" class="pill">0</span>
+            <span id="purchased-toggle-label">Show Purchased / Acquired</span> <span id="purchased-count" class="pill">0</span>
           </button>
           <div id="purchased-list" class="item-list hidden"></div>
         </div>
@@ -69,7 +68,7 @@
     </main>
   </div>
 
-  <!-- ADD / EDIT MODAL -->
+  <!-- ADD / EDIT ITEM MODAL -->
   <div id="modal-overlay" class="modal-overlay hidden">
     <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <h2 id="modal-title">Add Item</h2>
@@ -85,9 +84,11 @@
         </label>
         <label>
           Category
-          <input type="text" id="field-category" maxlength="60" placeholder="e.g. Tech, Investing, Hobby" list="category-suggestions" />
-          <datalist id="category-suggestions"></datalist>
+          <select id="field-category">
+            <option value="">No category</option>
+          </select>
         </label>
+        <button type="button" class="link-btn" id="modal-manage-categories-btn">Manage categories</button>
         <label>
           Notes
           <textarea id="field-notes" maxlength="500" rows="3" placeholder="Why do you want it? Model, link, size…"></textarea>
@@ -101,10 +102,26 @@
     </div>
   </div>
 
+  <!-- MANAGE CATEGORIES MODAL -->
+  <div id="categories-overlay" class="modal-overlay hidden">
+    <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="categories-title">
+      <h2 id="categories-title">Manage Categories</h2>
+      <form id="category-add-form" class="category-add-form">
+        <input type="text" id="new-category-name" maxlength="60" placeholder="New category name" />
+        <button type="submit" class="btn btn-primary">Add</button>
+      </form>
+      <div class="form-error hidden" id="category-form-error"></div>
+      <div id="categories-list" class="categories-list"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="categories-close">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CONFIRM DELETE MODAL -->
   <div id="confirm-overlay" class="modal-overlay hidden">
     <div class="modal modal-small glass" role="dialog" aria-modal="true">
-      <h2>Delete this item?</h2>
+      <h2 id="confirm-title">Delete this item?</h2>
       <p id="confirm-text" class="confirm-text"></p>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="confirm-cancel">Cancel</button>
