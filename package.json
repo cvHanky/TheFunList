@@ -1,0 +1,14 @@
+{
+  "name": "the-fun-list",
+  "version": "1.0.0",
+  "description": "A personal wishlist/priority tracker for things you want to buy or invest in.",
+  "private": true,
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
