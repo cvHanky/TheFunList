@@ -23,6 +23,12 @@
         <button class="tab" data-view="list" role="tab" aria-selected="false">My List</button>
       </nav>
       <div class="topbar-actions">
+        <div class="currency-switch" role="group" aria-label="Display currency">
+          <button class="currency-btn" data-currency="DKK">DKK</button>
+          <button class="currency-btn" data-currency="EUR">EUR</button>
+          <button class="currency-btn" data-currency="USD">USD</button>
+        </div>
+        <button class="btn btn-ghost" id="edit-rates-btn" title="Edit exchange rates">Rates</button>
         <button class="btn btn-ghost" id="theme-toggle" aria-label="Toggle color theme"></button>
         <button class="btn btn-primary" id="add-item-btn">Add Item</button>
       </div>
@@ -79,7 +85,7 @@
           <input type="text" id="field-name" required maxlength="120" placeholder="e.g. Sony WH-1000XM6" />
         </label>
         <label>
-          Price
+          Price (DKK)
           <input type="number" id="field-price" min="0" step="0.01" placeholder="0.00" />
         </label>
         <label>
@@ -115,6 +121,30 @@
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="categories-close">Close</button>
       </div>
+    </div>
+  </div>
+
+  <!-- EXCHANGE RATES MODAL -->
+  <div id="rates-overlay" class="modal-overlay hidden">
+    <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="rates-title">
+      <h2 id="rates-title">Exchange Rates</h2>
+      <p class="rates-intro">Prices are always entered and stored in DKK. These rates control what
+        EUR and USD amounts are shown as when you switch the display currency.</p>
+      <form id="rates-form">
+        <label>
+          1 EUR equals how many DKK?
+          <input type="number" id="field-eur-rate" min="0.0001" step="0.0001" required />
+        </label>
+        <label>
+          1 USD equals how many DKK?
+          <input type="number" id="field-usd-rate" min="0.0001" step="0.0001" required />
+        </label>
+        <div class="form-error hidden" id="rates-form-error"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="rates-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
     </div>
   </div>
 

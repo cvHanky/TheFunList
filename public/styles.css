@@ -183,6 +183,34 @@ body {
   gap: 10px;
 }
 
+.currency-switch {
+  display: flex;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.12);
+  padding: 3px;
+  border-radius: 999px;
+}
+[data-theme="light"] .currency-switch { background: rgba(0, 0, 0, 0.06); }
+
+.currency-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-1);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.currency-btn.active {
+  background: var(--glass-bg-strong);
+  color: var(--text-0);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+.currency-btn:hover:not(.active) { color: var(--text-0); }
+
 /* ============ Buttons ============ */
 .btn {
   border: none;
@@ -446,13 +474,10 @@ select option {
 
 .drag-handle {
   color: var(--text-2);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 1.1rem;
   cursor: grab;
   user-select: none;
-  white-space: nowrap;
+  padding: 0 2px;
 }
 
 .item-rank {
@@ -599,8 +624,8 @@ select option {
 
 .modal h2 { margin: 0 0 18px; font-size: 1.3rem; }
 
-#item-form { display: flex; flex-direction: column; gap: 14px; }
-#item-form label {
+#item-form, #rates-form { display: flex; flex-direction: column; gap: 14px; }
+#item-form label, #rates-form label {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -609,6 +634,13 @@ select option {
   font-weight: 600;
 }
 .req { color: var(--danger); }
+
+.rates-intro {
+  color: var(--text-1);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
 
 .form-error {
   background: rgba(255, 107, 107, 0.15);

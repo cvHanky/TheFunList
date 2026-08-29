@@ -17,6 +17,22 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+`);
+
+// Prices are always entered and stored in DKK. These are the DKK-per-1-unit
+// rates used to convert to EUR/USD for display. They're just sensible
+// starting points (EUR/DKK is Denmark's long-standing near-fixed peg, USD/DKK
+// is an approximate market rate) — editable anytime via PUT /api/settings.
+const DEFAULT_SETTINGS = { eur_rate: '7.46', usd_rate: '6.41' };
+for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
+  db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)').run(key, value);
+}
+
 migrateItemsTable();
 
 /**
@@ -133,6 +149,33 @@ function toCategoryClient(row) {
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ===================== Settings =====================
+
+function getSettings() {
+  const rows = db.prepare('SELECT key, value FROM settings').all();
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  return {
+    eurRate: Number(map.eur_rate),
+    usdRate: Number(map.usd_rate),
+  };
+}
+
+app.get('/api/settings', (req, res) => {
+  res.json(getSettings());
+});
+
+app.put('/api/settings', (req, res) => {
+  const { eurRate, usdRate } = req.body || {};
+  const eur = Number(eurRate);
+  const usd = Number(usdRate);
+  if (!Number.isFinite(eur) || eur <= 0) return res.status(400).json({ error: 'EUR rate must be a positive number.' });
+  if (!Number.isFinite(usd) || usd <= 0) return res.status(400).json({ error: 'USD rate must be a positive number.' });
+
+  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('eur_rate', String(eur));
+  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('usd_rate', String(usd));
+  res.json(getSettings());
+});
 
 // ===================== Categories =====================
 

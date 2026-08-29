@@ -1,12 +1,31 @@
 (() => {
   'use strict';
 
-  const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
-  const fmtPrice = (p) => (p === null || p === undefined || p === '' ? '—' : currency.format(p));
+  // Prices are always entered and stored in DKK. Display currency is a
+  // per-viewer preference (localStorage); the DKK->EUR/USD rates themselves
+  // are real settings data, fetched from the server.
+  const CURRENCY_FORMATTERS = {
+    DKK: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'DKK' }),
+    EUR: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }),
+    USD: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }),
+  };
+
+  function convertFromDkk(dkkAmount) {
+    if (selectedCurrency === 'EUR') return dkkAmount / settings.eurRate;
+    if (selectedCurrency === 'USD') return dkkAmount / settings.usdRate;
+    return dkkAmount;
+  }
+
+  function fmtPrice(dkkAmount) {
+    if (dkkAmount === null || dkkAmount === undefined || dkkAmount === '') return '—';
+    return CURRENCY_FORMATTERS[selectedCurrency].format(convertFromDkk(dkkAmount));
+  }
 
   // ---------- State ----------
   let allItems = [];
   let allCategories = [];
+  let settings = { eurRate: 7.46, usdRate: 6.41 };
+  let selectedCurrency = 'DKK';
   let currentView = 'home';
   let dragSourceId = null;
   let pendingDelete = null; // { type: 'item' | 'category', id, name }
@@ -46,6 +65,15 @@
   const manageCategoriesBtn = $('#manage-categories-btn');
   const categoriesClose = $('#categories-close');
 
+  const currencyButtons = document.querySelectorAll('.currency-btn');
+  const editRatesBtn = $('#edit-rates-btn');
+  const ratesOverlay = $('#rates-overlay');
+  const ratesForm = $('#rates-form');
+  const fieldEurRate = $('#field-eur-rate');
+  const fieldUsdRate = $('#field-usd-rate');
+  const ratesFormError = $('#rates-form-error');
+  const ratesCancel = $('#rates-cancel');
+
   const confirmOverlay = $('#confirm-overlay');
   const confirmTitle = $('#confirm-title');
   const confirmText = $('#confirm-text');
@@ -77,6 +105,10 @@
 
   async function loadCategories() {
     allCategories = await api('/api/categories');
+  }
+
+  async function loadSettings() {
+    settings = await api('/api/settings');
   }
 
   // ---------- Toast ----------
@@ -128,6 +160,56 @@
     try { localStorage.setItem('funlist-theme', next); } catch (_) {}
   });
 
+  // ---------- Currency ----------
+  function applyCurrency(cur) {
+    selectedCurrency = cur;
+    currencyButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.currency === cur));
+  }
+  function initCurrency() {
+    let saved = null;
+    try { saved = localStorage.getItem('funlist-currency'); } catch (_) {}
+    applyCurrency(CURRENCY_FORMATTERS[saved] ? saved : 'DKK');
+  }
+  currencyButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      applyCurrency(btn.dataset.currency);
+      try { localStorage.setItem('funlist-currency', btn.dataset.currency); } catch (_) {}
+      render();
+    });
+  });
+
+  function openRatesModal() {
+    ratesFormError.classList.add('hidden');
+    fieldEurRate.value = settings.eurRate;
+    fieldUsdRate.value = settings.usdRate;
+    ratesOverlay.classList.remove('hidden');
+    setTimeout(() => fieldEurRate.focus(), 50);
+  }
+  function closeRatesModal() {
+    ratesOverlay.classList.add('hidden');
+  }
+  editRatesBtn.addEventListener('click', openRatesModal);
+  ratesCancel.addEventListener('click', closeRatesModal);
+  ratesOverlay.addEventListener('click', (e) => {
+    if (e.target === ratesOverlay) closeRatesModal();
+  });
+  ratesForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    ratesFormError.classList.add('hidden');
+    try {
+      settings = await api('/api/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ eurRate: Number(fieldEurRate.value), usdRate: Number(fieldUsdRate.value) }),
+      });
+      closeRatesModal();
+      render();
+      toast('Exchange rates updated');
+    } catch (err) {
+      ratesFormError.textContent = err.message;
+      ratesFormError.classList.remove('hidden');
+    }
+  });
+
   // ---------- Rendering: Home ----------
   function renderHome() {
     const active = allItems.filter((i) => !i.purchased).sort((a, b) => a.rank - b.rank);
@@ -174,11 +256,11 @@
         <span class="stat-label">Active items</span>
       </div>
       <div class="stat">
-        <span class="stat-value">${currency.format(activeTotal)}</span>
+        <span class="stat-value">${fmtPrice(activeTotal)}</span>
         <span class="stat-label">Total wishlist cost</span>
       </div>
       <div class="stat">
-        <span class="stat-value">${currency.format(top3Total)}</span>
+        <span class="stat-value">${fmtPrice(top3Total)}</span>
         <span class="stat-label">Top 3 combined</span>
       </div>
       <div class="stat">
@@ -244,7 +326,7 @@
     row.draggable = draggable;
 
     row.innerHTML = `
-      ${draggable ? '<span class="drag-handle" title="Drag to reorder">Drag</span>' : '<span class="drag-handle" style="visibility:hidden">Drag</span>'}
+      ${draggable ? '<span class="drag-handle" title="Drag to reorder" aria-label="Drag to reorder">⠿</span>' : '<span class="drag-handle" style="visibility:hidden">⠿</span>'}
       ${rankNum !== null ? `<span class="item-rank">#${rankNum}</span>` : '<span class="item-rank"></span>'}
       <div class="item-main">
         <div class="item-title-row">
@@ -255,7 +337,7 @@
       </div>
       <span class="item-price">${fmtPrice(item.price)}</span>
       <div class="item-actions">
-        <button class="btn-check${item.purchased ? ' checked' : ''}">${item.purchased ? 'Restore' : 'Mark Purchased'}</button>
+        <button class="btn-check${item.purchased ? ' checked' : ''}" title="${item.purchased ? 'Restore to active list' : 'Mark as purchased'}" aria-label="${item.purchased ? 'Restore to active list' : 'Mark as purchased'}">${item.purchased ? '↺' : '✓'}</button>
         <button class="btn-edit">Edit</button>
         <button class="btn-delete">Delete</button>
       </div>
@@ -583,6 +665,7 @@
     if (e.key === 'Escape') {
       if (!modalOverlay.classList.contains('hidden')) closeModal();
       if (!categoriesOverlay.classList.contains('hidden')) closeCategoriesModal();
+      if (!ratesOverlay.classList.contains('hidden')) closeRatesModal();
       if (!confirmOverlay.classList.contains('hidden')) closeConfirm();
     }
   });
@@ -606,7 +689,8 @@
 
   // ---------- Init ----------
   initTheme();
-  Promise.all([loadCategories(), loadItems()])
+  initCurrency();
+  Promise.all([loadCategories(), loadItems(), loadSettings()])
     .then(render)
     .catch((err) => toast('Failed to load: ' + err.message));
 })();

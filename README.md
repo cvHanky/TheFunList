@@ -32,13 +32,19 @@ time you start the app. Nothing is sent anywhere over the network.
     opens simple add/rename/delete controls for your category list. Categories are
     case-insensitive and unique — you can't end up with both "Tech" and "tech".
     Deleting a category doesn't delete its items; they just become uncategorized.
-  - Drag the "Drag" handle to reorder items — top of the list = highest priority,
+  - Drag the grip handle to reorder items — top of the list = highest priority,
     and that's what feeds the Home page's top 3.
-  - "Edit"/"Delete" per item (delete asks for confirmation), and "Mark Purchased"
+  - "Edit"/"Delete" per item (delete asks for confirmation), and the check mark
     moves something to the collapsed "Purchased / Acquired" section at the bottom
-    ("Restore" brings it back).
+    (the restore arrow brings it back).
   - Search and filter by category from the toolbar.
 - The button in the header toggles light/dark mode (remembered per browser).
+- **Prices are always entered and stored in DKK.** The DKK/EUR/USD switch in the
+  header only changes how prices are *displayed* — everywhere (Home, stats, My
+  List) — using conversion rates you control via the "Rates" button. EUR/DKK
+  defaults to Denmark's long-standing near-fixed peg (~7.46); USD/DKK defaults to
+  an approximate market rate that will drift over time, so update it there
+  whenever you want a fresher figure.
 
 ## Tech notes
 
