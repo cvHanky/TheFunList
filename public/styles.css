@@ -455,6 +455,7 @@ select option {
 .item-list.hidden { display: none; }
 
 .item-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -465,12 +466,29 @@ select option {
 .item-row.dragging {
   opacity: 0.5;
 }
-.item-row.drag-over {
-  border-color: var(--accent);
-}
 .item-row.purchased {
   opacity: 0.6;
 }
+
+/* Drag-and-drop insertion indicator: a glowing line sitting exactly at the
+   boundary between two rows (in the gap above/below the hovered row,
+   depending on which half of it the cursor is over), so it's unambiguous
+   which two items the dragged one will land between — rather than
+   highlighting the hovered row's whole border, which left that ambiguous. */
+.item-row.drag-over-top::before,
+.item-row.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 10px 1px var(--accent);
+  pointer-events: none;
+}
+.item-row.drag-over-top::before { top: -8px; }
+.item-row.drag-over-bottom::after { bottom: -8px; }
 
 .drag-handle {
   color: var(--text-2);

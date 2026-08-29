@@ -28,6 +28,7 @@
   let selectedCurrency = 'DKK';
   let currentView = 'home';
   let dragSourceId = null;
+  let dragOverTarget = null; // { id, position: 'before' | 'after' }
   let pendingDelete = null; // { type: 'item' | 'category', id, name }
   let renamingCategoryId = null;
 
@@ -354,31 +355,44 @@
       });
       row.addEventListener('dragend', () => {
         row.classList.remove('dragging');
-        document.querySelectorAll('.drag-over').forEach((el) => el.classList.remove('drag-over'));
+        clearDropIndicators();
+        dragOverTarget = null;
       });
       row.addEventListener('dragover', (e) => {
         e.preventDefault();
-        row.classList.add('drag-over');
+        if (item.id === dragSourceId) return;
+        const rect = row.getBoundingClientRect();
+        const position = (e.clientY - rect.top) < rect.height / 2 ? 'before' : 'after';
+        dragOverTarget = { id: item.id, position };
+        clearDropIndicators();
+        row.classList.add(position === 'before' ? 'drag-over-top' : 'drag-over-bottom');
       });
-      row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
       row.addEventListener('drop', (e) => {
         e.preventDefault();
-        row.classList.remove('drag-over');
-        if (dragSourceId !== null && dragSourceId !== item.id) {
-          reorderByDrop(dragSourceId, item.id);
+        clearDropIndicators();
+        if (dragSourceId !== null && dragOverTarget) {
+          reorderByDrop(dragSourceId, dragOverTarget.id, dragOverTarget.position);
         }
+        dragOverTarget = null;
       });
     }
 
     return row;
   }
 
-  async function reorderByDrop(sourceId, targetId) {
+  function clearDropIndicators() {
+    document.querySelectorAll('.item-row.drag-over-top, .item-row.drag-over-bottom')
+      .forEach((el) => el.classList.remove('drag-over-top', 'drag-over-bottom'));
+  }
+
+  async function reorderByDrop(sourceId, targetId, position) {
     const active = allItems.filter((i) => !i.purchased).sort((a, b) => a.rank - b.rank);
     const fromIdx = active.findIndex((i) => i.id === sourceId);
-    const toIdx = active.findIndex((i) => i.id === targetId);
-    if (fromIdx === -1 || toIdx === -1) return;
+    if (fromIdx === -1) return;
     const [moved] = active.splice(fromIdx, 1);
+    let toIdx = active.findIndex((i) => i.id === targetId);
+    if (toIdx === -1) return;
+    if (position === 'after') toIdx += 1;
     active.splice(toIdx, 0, moved);
     const orderedIds = active.map((i) => i.id);
 
