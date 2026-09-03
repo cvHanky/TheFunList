@@ -84,7 +84,7 @@
 
   // ---------- API ----------
   async function api(path, options = {}) {
-    const res = await fetch(path, {
+    const res = await fetch((window.FUNLIST_BASE_PATH || '') + path, {
       headers: { 'Content-Type': 'application/json' },
       ...options,
     });
