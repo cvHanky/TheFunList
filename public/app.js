@@ -235,7 +235,6 @@
             ${item.categoryName ? `<span class="item-category">${escapeHtml(item.categoryName)}</span>` : '<span></span>'}
             <div class="item-name">${escapeHtml(item.name)}</div>
             <div class="item-price">${fmtPrice(item.price)}</div>
-            ${item.notes ? `<div class="item-notes">${escapeHtml(item.notes)}</div>` : ''}
           `;
           top3Grid.appendChild(card);
         } else {
