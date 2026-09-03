@@ -58,3 +58,22 @@ Older databases created before categories became their own table are migrated
 automatically the first time the server starts against them: any free-text
 category values are folded into proper category records (case-insensitive
 duplicates merged, first-seen casing kept), with every item's data preserved.
+
+## Running behind a reverse proxy at a path prefix
+
+By default the app assumes it's served from the root of its own origin (as it is
+with plain `npm start`). To mount it at a path prefix instead (e.g. `/funlist` on
+some other app's origin, with the proxy stripping that prefix before forwarding
+to Express — so `server.js` itself needs no changes and stays unaware of the
+prefix), set the base path the frontend uses for its API calls in
+[public/index.html](public/index.html), just before the `app.js` script tag:
+
+```html
+<script>window.FUNLIST_BASE_PATH = '/funlist';</script>
+```
+
+Leave it as `''` for standalone use. `public/styles.css` and `public/app.js` are
+already referenced with relative paths, so they resolve correctly at any mount
+path with no changes — this is the only setting that needs to change. Whatever
+serves the app at that prefix needs to be reachable with a trailing slash
+(`/funlist/`, not `/funlist`) for that relative resolution to work.
