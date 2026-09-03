@@ -149,7 +149,6 @@ body {
   font-size: 1.05rem;
   margin-right: auto;
 }
-.brand-icon { font-size: 1.3rem; }
 
 .tabs {
   display: flex;
@@ -184,6 +183,34 @@ body {
   gap: 10px;
 }
 
+.currency-switch {
+  display: flex;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.12);
+  padding: 3px;
+  border-radius: 999px;
+}
+[data-theme="light"] .currency-switch { background: rgba(0, 0, 0, 0.06); }
+
+.currency-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-1);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.currency-btn.active {
+  background: var(--glass-bg-strong);
+  color: var(--text-0);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+.currency-btn:hover:not(.active) { color: var(--text-0); }
+
 /* ============ Buttons ============ */
 .btn {
   border: none;
@@ -215,21 +242,21 @@ body {
   color: #fff;
 }
 
-.icon-btn {
+.link-btn {
   border: none;
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border);
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
+  background: none;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.15s ease;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  align-self: flex-start;
+  margin-top: -6px;
 }
-.icon-btn:hover { transform: scale(1.06); }
+.link-btn:hover { color: var(--accent-2); }
 
 /* ============ Views ============ */
 .view.hidden { display: none; }
@@ -257,7 +284,7 @@ body {
   position: relative;
   padding: 24px 20px 20px;
   border-radius: var(--radius-lg);
-  min-height: 190px;
+  min-height: 150px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -265,13 +292,6 @@ body {
 }
 .top3-card:hover {
   transform: translateY(-4px);
-}
-
-.top3-card.rank-1 { order: 2; }
-.top3-card.rank-2 { order: 1; }
-.top3-card.rank-3 { order: 3; }
-@media (max-width: 760px) {
-  .top3-card.rank-1, .top3-card.rank-2, .top3-card.rank-3 { order: initial; }
 }
 
 .rank-badge {
@@ -311,21 +331,11 @@ body {
 .top3-card .item-category {
   align-self: flex-start;
 }
-.top3-card .item-notes {
-  color: var(--text-2);
-  font-size: 0.85rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  margin-top: auto;
-}
 
 .top3-empty {
   border-radius: var(--radius-lg);
   border: 2px dashed var(--glass-border);
-  min-height: 190px;
+  min-height: 150px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -341,7 +351,6 @@ body {
   color: var(--text-1);
   grid-column: 1 / -1;
 }
-.empty-state .big { font-size: 2.4rem; margin-bottom: 8px; }
 
 /* ============ Stats bar ============ */
 .stats-bar {
@@ -407,6 +416,18 @@ input:focus, select:focus, textarea:focus {
 select { cursor: pointer; }
 textarea { resize: vertical; width: 100%; }
 
+/* Native <option> popups are rendered by the OS/browser, largely ignoring the
+   surrounding page's CSS custom properties — Chromium on Windows in particular
+   tends to keep the option list's own light background while still inheriting
+   our (theme-dependent) text color, which in dark mode means light text on a
+   light popup: invisible until a hover highlight provides contrast. Setting
+   color and background explicitly on <option> forces both sides of that
+   contrast pair so the list reads correctly in both themes. */
+select option {
+  color: #211f3d;
+  background: #ffffff;
+}
+
 /* ============ Item list ============ */
 .item-list {
   display: flex;
@@ -417,6 +438,7 @@ textarea { resize: vertical; width: 100%; }
 .item-list.hidden { display: none; }
 
 .item-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -427,12 +449,29 @@ textarea { resize: vertical; width: 100%; }
 .item-row.dragging {
   opacity: 0.5;
 }
-.item-row.drag-over {
-  border-color: var(--accent);
-}
 .item-row.purchased {
   opacity: 0.6;
 }
+
+/* Drag-and-drop insertion indicator: a glowing line sitting exactly at the
+   boundary between two rows (in the gap above/below the hovered row,
+   depending on which half of it the cursor is over), so it's unambiguous
+   which two items the dragged one will land between — rather than
+   highlighting the hovered row's whole border, which left that ambiguous. */
+.item-row.drag-over-top::before,
+.item-row.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 10px 1px var(--accent);
+  pointer-events: none;
+}
+.item-row.drag-over-top::before { top: -8px; }
+.item-row.drag-over-bottom::after { bottom: -8px; }
 
 .drag-handle {
   color: var(--text-2);
@@ -507,24 +546,23 @@ textarea { resize: vertical; width: 100%; }
   display: flex;
   gap: 6px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .item-actions button {
   border: none;
   background: rgba(255, 255, 255, 0.10);
   color: var(--text-1);
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
+  padding: 6px 12px;
+  border-radius: 999px;
   cursor: pointer;
-  font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
   transition: background 0.15s, color 0.15s, transform 0.15s;
 }
 .item-actions button:hover {
   background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.06);
+  transform: scale(1.03);
 }
 .item-actions .btn-check.checked {
   background: linear-gradient(135deg, var(--accent-3), #3fbfa0);
@@ -550,8 +588,6 @@ textarea { resize: vertical; width: 100%; }
   padding: 8px 4px;
   margin-bottom: 10px;
 }
-#purchased-caret { transition: transform 0.2s ease; display: inline-block; }
-#purchased-caret.open { transform: rotate(90deg); }
 .pill {
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border);
@@ -589,8 +625,8 @@ textarea { resize: vertical; width: 100%; }
 
 .modal h2 { margin: 0 0 18px; font-size: 1.3rem; }
 
-#item-form { display: flex; flex-direction: column; gap: 14px; }
-#item-form label {
+#item-form, #rates-form { display: flex; flex-direction: column; gap: 14px; }
+#item-form label, #rates-form label {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -599,6 +635,13 @@ textarea { resize: vertical; width: 100%; }
   font-weight: 600;
 }
 .req { color: var(--danger); }
+
+.rates-intro {
+  color: var(--text-1);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
 
 .form-error {
   background: rgba(255, 107, 107, 0.15);
@@ -618,6 +661,78 @@ textarea { resize: vertical; width: 100%; }
 }
 
 .confirm-text { color: var(--text-1); margin: 0 0 4px; }
+
+/* ============ Manage Categories ============ */
+.category-add-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.category-add-form input { flex: 1; }
+
+.categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+.category-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+}
+[data-theme="light"] .category-row { background: rgba(255, 255, 255, 0.5); }
+
+.category-row .category-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.category-row input.category-rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+}
+.category-row .category-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.category-row .category-actions button {
+  border: none;
+  background: rgba(255, 255, 255, 0.10);
+  color: var(--text-1);
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.category-row .category-actions button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.category-row .category-actions .btn-delete:hover {
+  background: var(--danger);
+  color: #fff;
+}
+.categories-empty {
+  color: var(--text-2);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 18px 0;
+}
 
 /* ============ Toast ============ */
 .toast {

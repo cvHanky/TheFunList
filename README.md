@@ -26,14 +26,25 @@ time you start the app. Nothing is sent anywhere over the network.
 
 - **Home** shows your top 3 items by priority, with price and a running total.
 - **My List** is where you manage everything:
-  - **+ Add Item** to create a new item (name, price, category, notes).
-  - Drag the `⠿` handle to reorder items — top of the list = highest priority,
+  - **Add Item** to create a new item (name, price, category, notes). Category is
+    picked from a dropdown of categories you've defined.
+  - **Manage Categories** (in the toolbar, or from inside the Add/Edit Item form)
+    opens simple add/rename/delete controls for your category list. Categories are
+    case-insensitive and unique — you can't end up with both "Tech" and "tech".
+    Deleting a category doesn't delete its items; they just become uncategorized.
+  - Drag the grip handle to reorder items — top of the list = highest priority,
     and that's what feeds the Home page's top 3.
-  - ✎ to edit, 🗑 to delete (with a confirmation), ✓ to mark something as
-    purchased (it moves to the collapsed "Purchased" section at the bottom;
-    ↺ brings it back).
+  - "Edit"/"Delete" per item (delete asks for confirmation), and the check mark
+    moves something to the collapsed "Purchased / Acquired" section at the bottom
+    (the restore arrow brings it back).
   - Search and filter by category from the toolbar.
-- The 🌙/☀️ button in the header toggles light/dark mode (remembered per browser).
+- The button in the header toggles light/dark mode (remembered per browser).
+- **Prices are always entered and stored in DKK.** The DKK/EUR/USD switch in the
+  header only changes how prices are *displayed* — everywhere (Home, stats, My
+  List) — using conversion rates you control via the "Rates" button. EUR/DKK
+  defaults to Denmark's long-standing near-fixed peg (~7.46); USD/DKK defaults to
+  an approximate market rate that will drift over time, so update it there
+  whenever you want a fresher figure.
 
 ## Tech notes
 
@@ -42,3 +53,8 @@ native compilation needed), and a dependency-free HTML/CSS/JS frontend. You'll
 see an "ExperimentalWarning: SQLite is an experimental feature" line in the
 terminal on startup — that's expected and harmless (Node's SQLite support is
 new but stable enough for this).
+
+Older databases created before categories became their own table are migrated
+automatically the first time the server starts against them: any free-text
+category values are folded into proper category records (case-insensitive
+duplicates merged, first-seen casing kept), with every item's data preserved.
