@@ -338,9 +338,11 @@
           ${item.categoryName ? `<span class="item-category">${escapeHtml(item.categoryName)}</span>` : ''}
         </div>
         ${hasNotes ? `
-          <div class="item-notes-line" title="${isExpanded ? 'Click to collapse' : 'Click to read in full'}">
-            <span class="item-notes-toggle"></span>
-            <span class="item-notes-text">${escapeHtml(item.notes)}</span>
+          <div class="item-notes-line"${isExpanded ? '' : ' title="Click to read in full"'}>
+            <span class="item-notes-toggle" title="${isExpanded ? 'Collapse' : 'Expand'}"></span>
+            ${isExpanded
+              ? `<textarea class="item-notes-textarea" readonly draggable="false" rows="1" spellcheck="false" title="Select to copy">${escapeHtml(item.notes)}</textarea>`
+              : `<span class="item-notes-text">${escapeHtml(item.notes)}</span>`}
           </div>
         ` : ''}
       </div>
@@ -358,7 +360,9 @@
 
     if (hasNotes) {
       row.addEventListener('click', (e) => {
-        if (e.target.closest('.item-actions') || e.target.closest('.drag-handle')) return;
+        // Let clicks inside the expanded note's textarea just select/copy text
+        // instead of collapsing it out from under you.
+        if (e.target.closest('.item-actions') || e.target.closest('.drag-handle') || e.target.closest('.item-notes-textarea')) return;
         if (expandedItemIds.has(item.id)) expandedItemIds.delete(item.id);
         else expandedItemIds.add(item.id);
         renderList();
