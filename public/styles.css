@@ -511,11 +511,39 @@ select option {
   color: var(--text-2);
 }
 .item-notes-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   color: var(--text-2);
   font-size: 0.83rem;
+  cursor: pointer;
+}
+.item-notes-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.item-row.expanded .item-notes-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: visible;
+}
+
+/* CSS-drawn chevron (not a text glyph) that rotates to show expanded state */
+.item-notes-toggle {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  margin-top: 4px;
+  border-right: 2px solid var(--text-2);
+  border-bottom: 2px solid var(--text-2);
+  transform: rotate(-45deg);
+  transition: transform 0.2s ease;
+}
+.item-row.expanded .item-notes-toggle {
+  margin-top: 2px;
+  transform: rotate(45deg);
 }
 
 .item-price {

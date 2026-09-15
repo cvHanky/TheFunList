@@ -31,6 +31,7 @@
   let dragOverTarget = null; // { id, position: 'before' | 'after' }
   let pendingDelete = null; // { type: 'item' | 'category', id, name }
   let renamingCategoryId = null;
+  let expandedItemIds = new Set(); // items whose notes are shown in full, not truncated
 
   // ---------- DOM ----------
   const $ = (sel) => document.querySelector(sel);
@@ -320,8 +321,11 @@
   }
 
   function buildRow(item, rankNum, draggable) {
+    const hasNotes = !!item.notes;
+    const isExpanded = hasNotes && expandedItemIds.has(item.id);
+
     const row = document.createElement('div');
-    row.className = `item-row glass${item.purchased ? ' purchased' : ''}`;
+    row.className = `item-row glass${item.purchased ? ' purchased' : ''}${hasNotes ? ' has-notes' : ''}${isExpanded ? ' expanded' : ''}`;
     row.dataset.id = item.id;
     row.draggable = draggable;
 
@@ -333,7 +337,12 @@
           <span class="item-name${item.purchased ? ' strike' : ''}">${escapeHtml(item.name)}</span>
           ${item.categoryName ? `<span class="item-category">${escapeHtml(item.categoryName)}</span>` : ''}
         </div>
-        ${item.notes ? `<span class="item-notes-line">${escapeHtml(item.notes)}</span>` : ''}
+        ${hasNotes ? `
+          <div class="item-notes-line" title="${isExpanded ? 'Click to collapse' : 'Click to read in full'}">
+            <span class="item-notes-toggle"></span>
+            <span class="item-notes-text">${escapeHtml(item.notes)}</span>
+          </div>
+        ` : ''}
       </div>
       <span class="item-price">${fmtPrice(item.price)}</span>
       <div class="item-actions">
@@ -343,9 +352,18 @@
       </div>
     `;
 
-    row.querySelector('.btn-check').addEventListener('click', () => togglePurchased(item));
-    row.querySelector('.btn-edit').addEventListener('click', () => openModal(item));
-    row.querySelector('.btn-delete').addEventListener('click', () => openConfirm({ type: 'item', id: item.id, name: item.name }));
+    row.querySelector('.btn-check').addEventListener('click', (e) => { e.stopPropagation(); togglePurchased(item); });
+    row.querySelector('.btn-edit').addEventListener('click', (e) => { e.stopPropagation(); openModal(item); });
+    row.querySelector('.btn-delete').addEventListener('click', (e) => { e.stopPropagation(); openConfirm({ type: 'item', id: item.id, name: item.name }); });
+
+    if (hasNotes) {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.item-actions') || e.target.closest('.drag-handle')) return;
+        if (expandedItemIds.has(item.id)) expandedItemIds.delete(item.id);
+        else expandedItemIds.add(item.id);
+        renderList();
+      });
+    }
 
     if (draggable) {
       row.addEventListener('dragstart', () => {
